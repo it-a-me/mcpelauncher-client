@@ -11,47 +11,69 @@
 #if defined(__i386__) || defined(__x86_64__)
 #include "cpuid.h"
 #endif
+#include <string_view>
+#include <log.h>
 
 static double g_Time = 0.0;
+static bool allowGPU = true;
+
+static std::string_view myGlGetString(GLenum t) {
+    auto raw = glGetString(t);
+    if(!raw) {
+        return {};
+    }
+    return (const char*)raw;
+}
 
 void ImGuiUIInit(GameWindow* window) {
-    if(!ImGui::GetCurrentContext() && glViewport) {
-        // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
+    if(!glGetString) {
+        return;
+    }
+    Log::info("GL", "Vendor: %s\n", glGetString(GL_VENDOR));
+    Log::info("GL", "Renderer: %s\n", glGetString(GL_RENDERER));
+    Log::info("GL", "Version: %s\n", glGetString(GL_VERSION));
+    if(!Settings::enable_imgui.value_or(allowGPU) || ImGui::GetCurrentContext()) {
+        return;
+    }
+    if(!Settings::enable_imgui.has_value() ) {
+        allowGPU = myGlGetString(GL_VENDOR) != "AMD" || myGlGetString(GL_RENDERER).find("radeonsi") != std::string::npos;
+        if(!allowGPU) {
+            Log::error("ImGuiUIInit", "Disabling ImGui Overlay due to known Problems");
+        }
+    }
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
 
-        static std::string ininame = PathHelper::getPrimaryDataDirectory() + "imgui.ini";
-        io.IniFilename = ininame.data();
+    static std::string ininame = PathHelper::getPrimaryDataDirectory() + "imgui.ini";
+    io.IniFilename = ininame.data();
 
-        // Setup Dear ImGui style
-        ImGui::StyleColorsDark();
-        // ImGui::StyleColorsLight();
-        io.BackendPlatformName = "imgui_impl_mcpelauncher";
-        io.ClipboardUserData = window;
-        io.SetClipboardTextFn = [](void *user_data, const char *text) {
-            if(text != nullptr) {
-                ((GameWindow *)user_data)->setClipboardText(text);
-            }
-        };
-        io.GetClipboardTextFn = [](void *user_data) -> const char* {
-            return Settings::clipboard.data();
-        };
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    // ImGui::StyleColorsLight();
+    io.BackendPlatformName = "imgui_impl_mcpelauncher";
+    io.ClipboardUserData = window;
+    io.SetClipboardTextFn = [](void *user_data, const char *text) {
+        if(text != nullptr) {
+            ((GameWindow *)user_data)->setClipboardText(text);
+        }
+    };
+    io.GetClipboardTextFn = [](void *user_data) -> const char* {
+        return Settings::clipboard.data();
+    };
 
-        ImGui_ImplOpenGL3_Init("#version 100");
+    ImGui_ImplOpenGL3_Init("#version 100");
 
-        Settings::load();
-        auto modes = window->getFullscreenModes();
-        for(auto&& mode : modes) {
-            if(Settings::videoMode == mode.description) {
-                window->setFullscreenMode(mode);
-            }
+    auto modes = window->getFullscreenModes();
+    for(auto&& mode : modes) {
+        if(Settings::videoMode == mode.description) {
+            window->setFullscreenMode(mode);
         }
     }
 }
 
 void ImGuiUIDrawFrame(GameWindow* window) {
-    if(!glViewport) {
+    if(!Settings::enable_imgui.value_or(allowGPU) || !glViewport) {
         return;
     }
     ImGuiIO& io = ImGui::GetIO();

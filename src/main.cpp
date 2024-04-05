@@ -41,6 +41,7 @@
 #include <unistd.h>
 #include <simpleipc/client/service_client.h>
 #include <daemon_utils/auto_shutdown_service.h>
+#include "settings.h"
 
 struct RpcCallbackServer : daemon_utils::auto_shutdown_service {
 
@@ -102,6 +103,7 @@ int main(int argc, char* argv[]) {
     argparser::arg<bool> forceEgl(p, "--force-opengles", "-fes", "Force creating an OpenGL ES surface instead of using the glcorepatch hack", !GLCorePatch::mustUseDesktopGL());
     argparser::arg<bool> texturePatch(p, "--texture-patch", "-tp", "Rewrite textures of the game for Minecraft 1.16.210 - 1.17.4X", false);
     argparser::arg<bool> stdinImpt(p, "--stdin-import", "-si", "Use stdin for file import", false);
+    argparser::arg<bool> resetSettings(p, "--reset-settings", "-gs", "Save the default Settings", false);
 
     if(!p.parse(argc, (const char**)argv))
         return 1;
@@ -136,7 +138,10 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    Log::trace("Launcher", "Loading hybris libraries");
+    Log::info("Launcher", "Reading Launcher Settings File: %s", Settings::getPath().data());
+    Settings::load();
+    Log::info("Launcher", "Applied Launcher Settings");
+    Log::trace("Launcher", "Loading android libraries");
     linker::init();
     Log::trace("Launcher", "linker loaded");
     auto windowManager = GameWindowManager::getManager();
