@@ -36,7 +36,7 @@ void ImGuiUIInit(GameWindow* window) {
         return;
     }
     if(!Settings::enable_imgui.has_value() ) {
-        allowGPU = myGlGetString(GL_VENDOR) != "AMD" || myGlGetString(GL_RENDERER).find("radeonsi") != std::string::npos;
+        allowGPU = myGlGetString(GL_RENDERER).find("Intel") != std::string::npos || myGlGetString(GL_RENDERER).find("ANGLE") != std::string::npos;
         if(!allowGPU) {
             Log::error("ImGuiUIInit", "Disabling ImGui Overlay due to known Problems");
         }
