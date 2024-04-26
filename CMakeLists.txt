@@ -73,7 +73,7 @@ if(USE_IMGUI AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../imgui" AND EXISTS 
         src/imgui_ui.h
     )
 
-    target_include_directories(mcpelauncher-client PRIVATE
+    target_include_directories(mcpelauncher-client BEFORE PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../imgui
         ${CMAKE_CURRENT_SOURCE_DIR}/../imgui/backends
         ${CMAKE_CURRENT_SOURCE_DIR}/src
