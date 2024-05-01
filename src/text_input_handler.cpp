@@ -171,8 +171,13 @@ std::string TextInputHandler::getCopyText() const {
 }
 
 void TextInputHandler::setCursorPosition(int pos) {
-    currentTextPositionUTF = pos;
-    currentTextPosition = UTF8Util::getBytePosFromUTF(currentText.c_str(), currentText.size(), pos);
+    if(pos < 0) {
+        currentTextPosition = currentText.size();
+        currentTextPositionUTF = UTF8Util::getLength(currentText.c_str(), currentTextPosition);
+    } else {
+        currentTextPositionUTF = pos;
+        currentTextPosition = UTF8Util::getBytePosFromUTF(currentText.c_str(), currentText.size(), pos);
+    }
 }
 
 void TextInputHandler::setKeepLastCharOnce() {
