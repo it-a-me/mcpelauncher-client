@@ -80,7 +80,7 @@ if(USE_IMGUI AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../imgui" AND EXISTS 
     )
 
     target_compile_definitions(mcpelauncher-client PRIVATE
-        IMGUI_IMPL_OPENGL_ES2
+        IMGUI_IMPL_OPENGL_ES3
         USE_IMGUI
     )
 endif()

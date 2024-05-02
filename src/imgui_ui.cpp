@@ -7,7 +7,7 @@
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <build_info.h>
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 #if defined(__i386__) || defined(__x86_64__)
 #include "cpuid.h"
 #endif
@@ -36,9 +36,9 @@ void ImGuiUIInit(GameWindow* window) {
         return;
     }
     if(!Settings::enable_imgui.has_value() ) {
-        allowGPU = myGlGetString(GL_RENDERER).find("Intel") != std::string::npos || myGlGetString(GL_RENDERER).find("ANGLE") != std::string::npos;
+        allowGPU = GLAD_GL_ES_VERSION_3_0;
         if(!allowGPU) {
-            Log::error("ImGuiUIInit", "Disabling ImGui Overlay due to known Problems");
+            Log::error("ImGuiUIInit", "Disabling ImGui Overlay due to OpenGLES 2");
         }
     }
     IMGUI_CHECKVERSION();
@@ -279,6 +279,5 @@ void ImGuiUIDrawFrame(GameWindow* window) {
 
     // Rendering
     ImGui::Render();
-    glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
