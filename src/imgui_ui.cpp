@@ -5,6 +5,7 @@
 #include <game_window_manager.h>
 #include <mcpelauncher/path_helper.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_opengl3.h>
 #include <build_info.h>
 #include <GLES3/gl3.h>
@@ -13,9 +14,21 @@
 #endif
 #include <string_view>
 #include <log.h>
+#include <util.h>
+#include <chrono>
 
 static double g_Time = 0.0;
 static bool allowGPU = true;
+
+static std::vector<long> lmb;
+static std::vector<long> rmb;
+static bool lmbLast = false;
+static bool rmbLast = false;
+
+static ImFont* fontDefaultSize;
+static ImFont* fontMediumSize;
+static ImFont* fontLargeSize;
+static ImFont* fontVeryLargeSize;
 
 static std::string_view myGlGetString(GLenum t) {
     auto raw = glGetString(t);
@@ -61,8 +74,39 @@ void ImGuiUIInit(GameWindow* window) {
     io.GetClipboardTextFn = [](void *user_data) -> const char* {
         return Settings::clipboard.data();
     };
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     ImGui_ImplOpenGL3_Init("#version 100");
+
+    ImFontConfig fontConfig;
+    fontConfig.FontDataOwnedByAtlas = false;
+    fontConfig.OversampleH = 1; // Disable horizontal oversampling
+    fontConfig.OversampleV = 1; // Disable vertical oversampling
+    fontConfig.PixelSnapH = true; // Snap to integer pixel positions
+
+
+    // One of these three fonts is present in all Minecraft versions newer than 1.0 (earliest supproted by launcher)
+    std::string path = PathHelper::getGameDir() + "/assets/assets/fonts/Mojangles.ttf";
+    if (!PathHelper::fileExists(path)) {
+        path = PathHelper::getGameDir() + "/assets/fonts/Mojangles.ttf";
+            if (!PathHelper::fileExists(path)) {
+                path = PathHelper::getGameDir() + "/assets/fonts/SegoeWP.ttf";
+            }
+    }
+
+    size_t data_size = 0;
+    void* data = ImFileLoadToMemory(path.data(), "rb", &data_size, 0);
+
+    fontDefaultSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 15, &fontConfig);
+    io.FontDefault = fontDefaultSize;
+
+    fontMediumSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 18, &fontConfig);
+
+    fontLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 24, &fontConfig);
+
+    fontVeryLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 36, &fontConfig);
+
+    IM_FREE(data);
 
     auto modes = window->getFullscreenModes();
     for(auto&& mode : modes) {
@@ -70,6 +114,22 @@ void ImGuiUIInit(GameWindow* window) {
             window->setFullscreenMode(mode);
         }
     }
+
+    // auto && style = ImGui::GetStyle();
+    // style.Colors[ImGuiCol_Border]                = ImVec4(0.31f, 0.31f, 1.00f, 0.00f);
+    // style.Colors[ImGuiCol_BorderShadow]          = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    // style.Colors[ImGuiCol_Button] = ImVec4(0x1e / 255.0, 0x1e / 255.0, 0x1e / 255.0, 0xff);
+    // //style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0x1e / 255.0, 0x1e / 255.0, 0x1e / 255.0, 0xff);
+    // style.Colors[ImGuiCol_ButtonActive] = ImVec4(0x30 / 255.0, 0x30 / 255.0, 0x30 / 255.0, 0xff);
+
+}
+
+static void CenterText(int x, int yPos, std::string text) {
+    ImVec2 sz = ImGui::CalcTextSize(text.c_str());
+    ImVec2 start = ImVec2(ImGui::GetWindowPos().x+ImGui::GetStyle().FramePadding.x, ImGui::GetWindowPos().y);
+    start.x += ((x-sz.x) / 2);
+    start.y += yPos;
+    ImGui::RenderTextWrapped(start, text.c_str(), NULL, 999);
 }
 
 void ImGuiUIDrawFrame(GameWindow* window) {
@@ -101,15 +161,40 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     ImGui::NewFrame();
     static auto showMenuBar = true;
     static auto menuFocused = false;
-    auto autoShowMenubar = (!window->getFullscreen() || io.MousePos.y == 0 && io.MouseDelta.y < -5 || menuFocused) && !window->getCursorDisabled();
+    auto now = std::chrono::high_resolution_clock::now();
+    static auto mouseOnY0Since = now;
+    bool showMenuBarViaMouse = false;
+    if(io.MousePos.y) {
+        mouseOnY0Since = now;
+    } else {
+        auto secs = std::chrono::duration_cast<std::chrono::milliseconds>(now - mouseOnY0Since).count();
+        showMenuBarViaMouse = secs >= 500;
+    }
+    auto autoShowMenubar = (!window->getFullscreen() || showMenuBarViaMouse || menuFocused) && !window->getCursorDisabled();
     static auto showFilePicker = false;
     static auto show_demo_window = false;
     static auto show_confirm_popup = false;
     static auto show_about = false;
-    if(Settings::enable_menubar && showMenuBar && autoShowMenubar && ImGui::BeginMainMenuBar())
+    auto wantfocusnextframe = io.KeyAlt;
+    if(wantfocusnextframe) {
+        ImGui::SetNextFrameWantCaptureKeyboard(true);
+    }
+    static bool lastwantfocusnextframe = false;
+    if(Settings::enable_menubar && showMenuBar && (autoShowMenubar || wantfocusnextframe) && ImGui::BeginMainMenuBar())
 
     {
         menuFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+        if(wantfocusnextframe) {
+            auto w = ImGui::GetCurrentWindow();
+            if(!lastwantfocusnextframe) {
+                auto id = ImGui::GetID("File");
+                ImGui::SetFocusID(id, w);
+                ImGuiContext& g = *ImGui::GetCurrentContext();
+                g.NavDisableHighlight = false;
+            }
+            menuFocused = true;
+        }
+        lastwantfocusnextframe = wantfocusnextframe;
         if(ImGui::BeginMenu("File")) {
 #ifndef NDEBUG
             if(ImGui::MenuItem("Open")) {
@@ -164,6 +249,29 @@ void ImGuiUIDrawFrame(GameWindow* window) {
                 }
                 ImGui::EndMenu();
             }
+            if(ImGui::BeginMenu("Show Keystroke-Mouse-Hud")) {
+                if (ImGui::MenuItem("None", nullptr, Settings::keystroke_mouse_hud_location == -1)) {
+                    Settings::keystroke_mouse_hud_location = -1;
+                    Settings::save();
+                }
+                if (ImGui::MenuItem("Top Left", nullptr, Settings::keystroke_mouse_hud_location == 0)) {
+                    Settings::keystroke_mouse_hud_location = 0;
+                    Settings::save();
+                }
+                if (ImGui::MenuItem("Top Right", nullptr, Settings::keystroke_mouse_hud_location == 1)) {
+                    Settings::keystroke_mouse_hud_location = 1;
+                    Settings::save();
+                }
+                if (ImGui::MenuItem("Bottom Left", nullptr, Settings::keystroke_mouse_hud_location == 2)) {
+                    Settings::keystroke_mouse_hud_location = 2;
+                    Settings::save();
+                }
+                if (ImGui::MenuItem("Bottom Right", nullptr, Settings::keystroke_mouse_hud_location == 3)) {
+                    Settings::keystroke_mouse_hud_location = 3;
+                    Settings::save();
+                }
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
         if(ImGui::BeginMenu("Video")) {
@@ -193,6 +301,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     } else {
         Settings::menubarsize = 0;
         menuFocused = false;
+        lastwantfocusnextframe = false;
     }
     // Always center this window when appearing
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -274,6 +383,206 @@ void ImGuiUIDrawFrame(GameWindow* window) {
         {
             ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         }
+        ImGui::End();
+    }
+    if(Settings::keystroke_mouse_hud_location >= 0) {
+        const float SMALL_PAD = 5.0f;
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+        
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+        ImVec2 work_size = viewport->WorkSize;
+        ImVec2 window_pos, window_pos_pivot;
+        window_pos.x = (Settings::keystroke_mouse_hud_location & 1) ? (work_pos.x + work_size.x - SMALL_PAD) : (work_pos.x + SMALL_PAD);
+        window_pos.y = (Settings::keystroke_mouse_hud_location & 2) ? (work_pos.y + work_size.y - SMALL_PAD) : (work_pos.y + SMALL_PAD);
+        window_pos_pivot.x = (Settings::keystroke_mouse_hud_location & 1) ? 1.0f : 0.0f;
+        window_pos_pivot.y = (Settings::keystroke_mouse_hud_location & 2) ? 1.0f : 0.0f;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        ImGui::SetNextWindowBgAlpha(0); // Transparent background
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+        ImGui::Begin("hud", nullptr, window_flags);
+        ImGui::PopStyleVar(2);
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1, 1, 1, 1));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15.0f, 5.0f));
+
+        ImGui::PushFont(fontVeryLargeSize);
+
+        ImVec2 keySizeNoPad = ImGui::CalcTextSize("W");
+        ImVec2 keySize = ImVec2(keySizeNoPad.x+ImGui::GetStyle().FramePadding.x*2, keySizeNoPad.y+ImGui::GetStyle().FramePadding.y*2);
+
+        auto adj = [&](ImVec2 b) {
+            return b;
+        };
+
+        ImGui::SetCursorPos(adj(ImVec2(SMALL_PAD + keySize.x, work_pos.y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(ImGui::GetKeyData(ImGuiKey_W)->Down ? 0.70f : 0.15f); // Transparent background
+        ImVec2 size;
+        
+        if (ImGui::BeginChild("W", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("W");
+            size = ImGui::GetWindowSize();
+        }
+        ImGui::EndChild();
+        
+        auto x = work_pos.x;
+        auto y = work_pos.y + size.y + SMALL_PAD;
+        ImGui::SetCursorPos(adj(ImVec2(x, y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(ImGui::GetKeyData(ImGuiKey_A)->Down ? 0.70f : 0.15f); // Transparent background
+        if (ImGui::BeginChild("A", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("A");
+            auto pos = ImGui::GetWindowPos();
+            size = ImGui::GetWindowSize();
+            x += SMALL_PAD + size.x;
+        }
+        ImGui::EndChild();
+
+        ImGui::SetCursorPos(adj(ImVec2(x, y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(ImGui::GetKeyData(ImGuiKey_S)->Down ? 0.70f : 0.15f); // Transparent background
+        if (ImGui::BeginChild("S", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("S");
+            auto pos = ImGui::GetWindowPos();
+            auto size = ImGui::GetWindowSize();
+            x += SMALL_PAD + size.x;
+        }
+        ImGui::EndChild();
+
+        ImVec2 finalSize = ImVec2(x, keySize.y);
+
+        ImGui::SetCursorPos(adj(ImVec2(x, y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(ImGui::GetKeyData(ImGuiKey_D)->Down ? 0.70f : 0.15f); // Transparent background
+        if (ImGui::BeginChild("D", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("D");
+            auto pos = ImGui::GetWindowPos();
+            auto size = ImGui::GetWindowSize();
+            finalSize = ImVec2(x + size.x - SMALL_PAD, size.y);
+            x -= 2*(SMALL_PAD + size.x);
+            y += SMALL_PAD + size.y;
+        }
+        ImGui::EndChild();
+
+        ImGui::PopFont();
+
+        ImVec2 spaceSize = ImVec2(keySize.x*3 + SMALL_PAD*2 - ImGui::GetStyle().FramePadding.x*2, keySize.y/2);
+
+        ImGui::SetCursorPos(adj(ImVec2(x, y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(ImGui::GetKeyData(ImGuiKey_Space)->Down ? 0.70f : 0.15f); // Transparent background
+        if (ImGui::BeginChild("Space", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Dummy(spaceSize);
+
+            float lineWidth = spaceSize.x/3; // Adjust as needed
+
+            auto size = ImGui::GetWindowSize();
+
+            int padding = spaceSize.x/3;
+
+            // Draw horizontal line
+            ImGui::GetWindowDrawList()->AddLine(
+                ImVec2(ImGui::GetWindowPos().x+padding, ImGui::GetWindowPos().y+(size.y/2)),// EndChild point (x = 10 + lineWidth, y = 50)
+                ImVec2(ImGui::GetWindowPos().x+size.x-padding, ImGui::GetWindowPos().y+(size.y/2)),// EndChild point (x = 10 + lineWidth, y = 50)
+                ImColor(255, 255, 255),          // Color (white)
+                2.0f                             // Thickness
+            );
+
+            auto pos = ImGui::GetWindowPos();
+            y += SMALL_PAD + size.y;
+        }
+        ImGui::EndChild();
+
+        ImGui::PushFont(fontLargeSize);
+
+        bool leftClicked = false;
+        bool leftDown = ImGui::GetKeyData(ImGuiKey_MouseLeft)->Down;
+        bool rightClicked = false;
+        bool rightDown = ImGui::GetKeyData(ImGuiKey_MouseRight)->Down;
+
+        leftClicked = leftDown && !lmbLast;
+        rightClicked = rightDown && !rmbLast;
+
+        lmbLast = leftDown;
+        rmbLast = rightDown;
+
+        auto now = std::chrono::system_clock::now();
+        // Get the duration since the epoch
+        auto duration = now.time_since_epoch();
+        // Convert duration to milliseconds
+        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+        if (leftClicked) {
+            lmb.push_back(milliseconds);
+        }
+        if (rightClicked) {
+            rmb.push_back(milliseconds);
+        }
+
+        std::vector<long> newLmb;
+        std::vector<long> newRmb;
+        for(const long& i : lmb) {
+            if (milliseconds - i <= 1000) {
+                newLmb.push_back(i);
+            }
+        }
+        for(const long& i : rmb) {
+            if (milliseconds - i <= 1000) {
+                newRmb.push_back(i);
+            }
+        }
+
+        lmb = newLmb;
+        rmb = newRmb;
+
+        ImVec2 cpsSize = ImVec2((spaceSize.x - ImGui::GetStyle().FramePadding.x*2) / 2 - (SMALL_PAD/2), keySize.y - 10);
+
+        ImGui::SetCursorPos(adj(ImVec2(x, y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(leftDown ? 0.70f : 0.15f); // Transparent background
+        if (ImGui::BeginChild("LMB", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            auto pos = ImGui::GetWindowPos();
+            CenterText(cpsSize.x, 5, "LMB");
+            ImGui::Dummy(ImVec2(cpsSize.x, ImGui::GetFontSize()));
+            ImGui::PushFont(fontMediumSize);
+            CenterText(cpsSize.x, (int)ImGui::GetFontSize()+(ImGui::GetFontSize()/2), std::to_string(lmb.size()) + " CPS");
+            ImGui::Dummy(ImVec2(cpsSize.x, (ImGui::GetFontSize() / 1.5)));
+            ImGui::PopFont();
+            auto size = ImGui::GetWindowSize();
+            x += SMALL_PAD + size.x;
+        }
+        ImGui::EndChild();
+
+        ImGui::SetCursorPos(adj(ImVec2(x, y)));
+        window_flags |= ImGuiWindowFlags_NoMove;
+        ImGui::SetNextWindowBgAlpha(rightDown ? 0.70f : 0.15f); // Transparent background
+        if (ImGui::BeginChild("RMB", ImVec2(0, 0), ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle, window_flags & ~ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            auto pos = ImGui::GetWindowPos();
+            CenterText(cpsSize.x, 5, "RMB");
+            ImGui::Dummy(ImVec2(cpsSize.x, ImGui::GetFontSize()));
+            ImGui::PushFont(fontMediumSize);
+            CenterText(cpsSize.x, (int)ImGui::GetFontSize()+(ImGui::GetFontSize()/2), std::to_string(rmb.size()) + " CPS");
+            ImGui::Dummy(ImVec2(cpsSize.x, (ImGui::GetFontSize() / 1.5)));
+
+            ImGui::PopFont();
+            auto size = ImGui::GetWindowSize();
+            x += SMALL_PAD + size.x;
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+        ImGui::PopFont();
+
         ImGui::End();
     }
 

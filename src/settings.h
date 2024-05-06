@@ -10,6 +10,7 @@ struct Settings {
     static bool enable_keyboard_autofocus_patches_1_20_60;
     static bool enable_menubar;
     static int fps_hud_location;
+    static int keystroke_mouse_hud_location;
     static std::string videoMode;
 
     static std::string getPath();
