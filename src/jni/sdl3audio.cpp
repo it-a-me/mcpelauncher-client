@@ -20,7 +20,7 @@ FakeJni::JBoolean AudioDevice::init(FakeJni::JInt channels, FakeJni::JInt sample
     spec.format = SDL_AUDIO_S16LE;
     spec.freq = samplerate;
     maxBufferLen = c * d * channels * 2;
-    s = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec, nullptr, nullptr);
+    s = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
     if(s == NULL) {
         auto errormsg = SDL_GetError();
         GameWindowManager::getManager()->getErrorHandler()->onError("sdl3audio failed", std::string("sdl3audio SDL_OpenAudioDeviceStream failed, audio will be unavailable: ") + (errormsg ? errormsg : "No message from sdl3audio"));
