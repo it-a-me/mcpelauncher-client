@@ -105,6 +105,7 @@ int main(int argc, char* argv[]) {
     argparser::arg<bool> texturePatch(p, "--texture-patch", "-tp", "Rewrite textures of the game for Minecraft 1.16.210 - 1.17.4X", false);
     argparser::arg<bool> stdinImpt(p, "--stdin-import", "-si", "Use stdin for file import", false);
     argparser::arg<bool> resetSettings(p, "--reset-settings", "-gs", "Save the default Settings", false);
+    argparser::arg<bool> freeOnly(p, "--free-only", "-f", "Only allow starting free versions", false);
 
     if(!p.parse(argc, (const char**)argv))
         return 1;
@@ -408,7 +409,27 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
             SetLogToStderr(true);
         }
     }
-                    
+    bool (*isAndroidTrial)() = (decltype(isAndroidTrial))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isAndroidTrial");
+    bool (*isAndroidChromebook)() = (decltype(isAndroidChromebook))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isAndroidChromebook");
+    bool (*isAndroidAmazon)() = (decltype(isAndroidAmazon))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isAndroidAmazon");
+    bool (*isEduMode)() = (decltype(isEduMode))linker::dlsym(handle, "Java_com_mojang_minecraftpe_MainActivity_isEduMode");
+    
+    if(isAndroidTrial && isAndroidTrial()) {
+        Log::info("Launcher", "Detected Trial build");
+    }
+    if(isAndroidChromebook && isAndroidChromebook()) {
+        Log::info("Launcher", "Detected Chromebook build");
+    }
+    if(isAndroidAmazon && isAndroidAmazon()) {
+        Log::info("Launcher", "Detected Amazon build");
+    }
+    if(isEduMode && isEduMode()) {
+        Log::info("Launcher", "Detected Education build");
+    }
+    if(freeOnly.get() && !(isAndroidTrial && isAndroidTrial()) && !(isAndroidAmazon && isAndroidAmazon()) && !(isEduMode && isEduMode())) {
+        Log::error("Launcher", "Something went wrong");
+        return 1;
+    }
                 
     SymbolsHelper::initSymbols(handle);
     CorePatches::install(handle);
