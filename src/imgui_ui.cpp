@@ -97,14 +97,14 @@ void ImGuiUIInit(GameWindow* window) {
     size_t data_size = 0;
     void* data = ImFileLoadToMemory(path.data(), "rb", &data_size, 0);
 
-    fontDefaultSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 15, &fontConfig);
+    fontDefaultSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 15 * Settings::scale, &fontConfig);
     io.FontDefault = fontDefaultSize;
 
-    fontMediumSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 18, &fontConfig);
+    fontMediumSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 18 * Settings::scale, &fontConfig);
 
-    fontLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 24, &fontConfig);
+    fontLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 24 * Settings::scale, &fontConfig);
 
-    fontVeryLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 36, &fontConfig);
+    fontVeryLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 36 * Settings::scale, &fontConfig);
 
     IM_FREE(data);
 
@@ -122,6 +122,7 @@ void ImGuiUIInit(GameWindow* window) {
     // //style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0x1e / 255.0, 0x1e / 255.0, 0x1e / 255.0, 0xff);
     // style.Colors[ImGuiCol_ButtonActive] = ImVec4(0x30 / 255.0, 0x30 / 255.0, 0x30 / 255.0, 0xff);
 
+    ImGui::GetStyle().ScaleAllSizes(Settings::scale);
 }
 
 static void CenterText(int x, int yPos, std::string text) {
@@ -272,6 +273,15 @@ void ImGuiUIDrawFrame(GameWindow* window) {
                 }
                 ImGui::EndMenu();
             }
+            if(ImGui::BeginMenu("Scale")) {
+                for(int i = 1; i < 10; i++) {
+                    if (ImGui::MenuItem((std::to_string(i) + "x").data(), nullptr, Settings::scale == i)) {
+                        Settings::scale = i;
+                        Settings::save();
+                    }
+                }
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
         if(ImGui::BeginMenu("Video")) {
@@ -366,7 +376,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
 
     if (Settings::fps_hud_location >= 0)
     {
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMouseInputs;
         const float PAD = 10.0f;
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
@@ -387,7 +397,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     }
     if(Settings::keystroke_mouse_hud_location >= 0) {
         const float SMALL_PAD = 5.0f;
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoMouseInputs;
         
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!

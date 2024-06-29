@@ -13,6 +13,7 @@ bool Settings::enable_menubar = true;
 int Settings::fps_hud_location;
 int Settings::keystroke_mouse_hud_location;
 std::string Settings::videoMode;
+int Settings::scale;
 
 static properties::property_list settings('=');
 static properties::property<std::string> enable_imgui(settings, "enable_imgui", "auto");
@@ -22,6 +23,7 @@ static properties::property<bool> enable_menubar(settings, "enable_menubar", /* 
 static properties::property<int> fps_hud_location(settings, "fps_hud_location", /* default if not defined*/ -1);
 static properties::property<int> keystroke_mouse_hud_location(settings, "keystroke_mouse_hud_location", /* default if not defined*/ -1);
 static properties::property<std::string> videoMode(settings, "videoMode", "");
+static properties::property<int> scale(settings, "scale", 1);
 
 std::string Settings::getPath() {
     return PathHelper::getPrimaryDataDirectory() + "mcpelauncher-client-settings.txt";
@@ -44,6 +46,7 @@ void Settings::load() {
     Settings::fps_hud_location = ::fps_hud_location.get();
     Settings::keystroke_mouse_hud_location = ::keystroke_mouse_hud_location.get();
     Settings::videoMode = ::videoMode.get();
+    Settings::scale = ::scale.get();
 }
 
 void Settings::save() {
@@ -58,6 +61,7 @@ void Settings::save() {
     ::fps_hud_location.set(Settings::fps_hud_location);
     ::keystroke_mouse_hud_location.set(Settings::keystroke_mouse_hud_location);
     ::videoMode.set(Settings::videoMode);
+    ::scale.set(Settings::scale);
     std::ofstream propertiesFile(getPath());
     if (propertiesFile) {
         settings.save(propertiesFile);

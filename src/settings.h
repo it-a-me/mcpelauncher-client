@@ -12,6 +12,7 @@ struct Settings {
     static int fps_hud_location;
     static int keystroke_mouse_hud_location;
     static std::string videoMode;
+    static int scale;
 
     static std::string getPath();
     static void load();
