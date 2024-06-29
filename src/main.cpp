@@ -353,7 +353,9 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
         android_syms.insert({*s, (void*)+[]() { Log::warn("Main", "Android stub called"); }});
     linker::load_library("libandroid.so", android_syms);
     ModLoader modLoader;
-    modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
+    if(!freeOnly.get()) {
+        modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
+    }
 
     Log::trace("Launcher", "Loading Minecraft library");
     static void* handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen));
@@ -371,7 +373,9 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
         gladLoadGLES2Loader(fake_egl::eglGetProcAddress);
 #endif
         // preinit Mods using libGLESv2 can only load now
-        modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
+        if(!freeOnly.get()) {
+            modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
+        }
         // Try load the game again
         handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen));
     }
@@ -383,7 +387,9 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
     Log::debug("Launcher", "Minecraft is at offset 0x%" PRIXPTR, (uintptr_t)MinecraftUtils::getLibraryBase(handle));
     base = MinecraftUtils::getLibraryBase(handle);
 
-    modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
+    if(!freeOnly.get()) {
+        modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
+    }
 
     Log::info("Launcher", "Game version: %s", MinecraftVersion::getString().c_str());
 
