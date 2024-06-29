@@ -176,7 +176,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     static auto show_demo_window = false;
     static auto show_confirm_popup = false;
     static auto show_about = false;
-    auto wantfocusnextframe = io.KeyAlt;
+    auto wantfocusnextframe = Settings::menubarFocusKey == "alt" && io.KeyAlt;
     if(wantfocusnextframe) {
         ImGui::SetNextFrameWantCaptureKeyboard(true);
     }
@@ -210,6 +210,11 @@ void ImGuiUIDrawFrame(GameWindow* window) {
                 show_demo_window = true;
             }
 #endif
+            if(ImGui::MenuItem("Use Alt to Focus Menubar", nullptr, Settings::menubarFocusKey == "alt")) {
+                Settings::menubarFocusKey = Settings::menubarFocusKey == "alt" ? "" : "alt";
+                Settings::save();
+            }
+
             if(ImGui::MenuItem("Close")) {
                 window->close();
             }

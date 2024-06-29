@@ -62,8 +62,15 @@ LauncherOptions options;
 void printVersionInfo();
 
 bool checkFullscreen();
-
+#include <fenv.h>
 int main(int argc, char* argv[]) {
+    // fesetround(FE_UPWARD);
+    fesetround(FE_TOWARDZERO);
+    //fesetexceptflag(FE_NOMASK_ENV);
+    fedisableexcept(FE_ALL_EXCEPT);
+    
+    
+    
     if(argc == 2 && argv[1][0] != '-') {
         Log::info("Sendfile", "sending file");
         simpleipc::client::service_client sc(PathHelper::getPrimaryDataDirectory() + "file_handler");
@@ -368,6 +375,18 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
             Log::warn("V8", "Couldn't apply v8-flags %s to the game", v8Flags.get().data());
         }
     }
+    {
+        void (*LogToDebug)(int servity) = (decltype(LogToDebug))linker::dlsym(handle, "_ZN3rtc10LogMessage10LogToDebugENS_15LoggingSeverityE");
+        if(LogToDebug) {
+            LogToDebug(0);
+        }
+        void (*SetLogToStderr)(bool on) = (decltype(SetLogToStderr))linker::dlsym(handle, "_ZN3rtc10LogMessage14SetLogToStderrEb");
+        if(SetLogToStderr) {
+            SetLogToStderr(true);
+        }
+    }
+                    
+                
     SymbolsHelper::initSymbols(handle);
     CorePatches::install(handle);
 #ifdef __i386__
