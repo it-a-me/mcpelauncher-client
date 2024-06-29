@@ -62,15 +62,8 @@ LauncherOptions options;
 void printVersionInfo();
 
 bool checkFullscreen();
-#include <fenv.h>
+
 int main(int argc, char* argv[]) {
-    // fesetround(FE_UPWARD);
-    fesetround(FE_TOWARDZERO);
-    //fesetexceptflag(FE_NOMASK_ENV);
-    fedisableexcept(FE_ALL_EXCEPT);
-    
-    
-    
     if(argc == 2 && argv[1][0] != '-') {
         Log::info("Sendfile", "sending file");
         simpleipc::client::service_client sc(PathHelper::getPrimaryDataDirectory() + "file_handler");
@@ -104,6 +97,7 @@ int main(int argc, char* argv[]) {
         ""
 #endif
     );
+    argparser::arg<bool> webrtcdebug(p, "--webrtc-debug", "-drtc", "Enable webrtc debug logging");
     argparser::arg<int> windowWidth(p, "--width", "-ww", "Window width", 720);
     argparser::arg<int> windowHeight(p, "--height", "-wh", "Window height", 480);
     argparser::arg<bool> disableFmod(p, "--disable-fmod", "-df", "Disables usage of the FMod audio library");
@@ -135,6 +129,27 @@ int main(int argc, char* argv[]) {
         PathHelper::setCacheDir(cacheDir);
 
     Log::info("Launcher", "Version: client %s / manifest %s", CLIENT_GIT_COMMIT_HASH, MANIFEST_GIT_COMMIT_HASH);
+#if defined(__linux__)
+#define TARGET "Linux"
+#elif defined(__APPLE__)
+#define TARGET "macOS"
+#elif defined(__FreeBSD__)
+#define TARGET "FreeBSD"
+#else
+#define TARGET "Unknown"
+#endif
+#if defined(__x86_64__)
+#define ARCH "x86_64"
+#elif defined(__i386__)
+#define ARCH "x86"
+#elif defined(__aarch64__)
+#define ARCH "arm64"
+#elif defined(__arm__)
+#define ARCH "arm"
+#else
+#define ARCH "Unknown"
+#endif
+    Log::info("Launcher", "OS: %s, Arch: %s", TARGET, ARCH);
     options.fullscreen = checkFullscreen();
 #if defined(__i386__) || defined(__x86_64__)
     {
@@ -145,9 +160,16 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
-    Log::info("Launcher", "Reading Launcher Settings File: %s", Settings::getPath().data());
-    Settings::load();
-    Log::info("Launcher", "Applied Launcher Settings");
+    if(resetSettings.get()) {
+        Log::info("Launcher", "Resetting Launcher Settings File: %s", Settings::getPath().data());
+        Settings::save();
+        Log::info("Launcher", "Launcher Settings reset");
+    } else {
+        Log::info("Launcher", "Reading Launcher Settings File: %s", Settings::getPath().data());
+        Settings::load();
+        Log::info("Launcher", "Applied Launcher Settings");
+    }
+
     Log::trace("Launcher", "Loading android libraries");
     linker::init();
     Log::trace("Launcher", "linker loaded");
@@ -375,6 +397,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
             Log::warn("V8", "Couldn't apply v8-flags %s to the game", v8Flags.get().data());
         }
     }
+    if(webrtcdebug.get())
     {
         void (*LogToDebug)(int servity) = (decltype(LogToDebug))linker::dlsym(handle, "_ZN3rtc10LogMessage10LogToDebugENS_15LoggingSeverityE");
         if(LogToDebug) {

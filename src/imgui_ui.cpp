@@ -355,6 +355,27 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     if(show_about) {
         if(ImGui::Begin("About", &show_about)) {
             ImGui::Text("mcpelauncher-client %s / manifest %s\n", CLIENT_GIT_COMMIT_HASH, MANIFEST_GIT_COMMIT_HASH);
+#if defined(__linux__)
+#define TARGET "Linux"
+#elif defined(__APPLE__)
+#define TARGET "macOS"
+#elif defined(__FreeBSD__)
+#define TARGET "FreeBSD"
+#else
+#define TARGET "Unknown"
+#endif
+#if defined(__x86_64__)
+#define ARCH "x86_64"
+#elif defined(__i386__)
+#define ARCH "x86"
+#elif defined(__aarch64__)
+#define ARCH "arm64"
+#elif defined(__arm__)
+#define ARCH "arm"
+#else
+#define ARCH "Unknown"
+#endif
+            ImGui::Text("OS: %s, Arch: %s\n", TARGET, ARCH);
 #if defined(__i386__) || defined(__x86_64__)
             CpuId cpuid;
             ImGui::Text("CPU: %s %s\n", cpuid.getManufacturer(), cpuid.getBrandString());
