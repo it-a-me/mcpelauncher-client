@@ -305,6 +305,8 @@ public:
 
     void setLastChar(FakeJni::JInt sym);
 
+    FakeJni::JLong getAllocatableBytes(std::shared_ptr<FakeJni::JString> path);
+    FakeJni::JBoolean supportsSizeQuery(std::shared_ptr<FakeJni::JString> path);
 };
 
 class JellyBeanDeviceManager : public FakeJni::JObject {

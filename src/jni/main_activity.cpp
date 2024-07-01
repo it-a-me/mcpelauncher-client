@@ -254,6 +254,19 @@ std::shared_ptr<FakeJni::JByteArray> MainActivity::getFileDataBytes(std::shared_
     return std::make_shared<FakeJni::JByteArray>();
 }
 
+// Allow Marketplace Content bigger than 432MB to download
+FakeJni::JBoolean MainActivity::supportsSizeQuery(std::shared_ptr<FakeJni::JString> path) {
+    // const char* rpath = path->data();
+    // printf("supportsSizeQuery: %s\n", rpath);
+    return true;
+}
+
+FakeJni::JLong MainActivity::getAllocatableBytes(std::shared_ptr<FakeJni::JString> path) {
+    // const char* rpath = path->data();
+    // printf("getAllocatableBytes: %s\n", rpath);
+    return 1024L * 1024L * 1024L * 1024L;
+}
+
 void MainActivity::startPlayIntegrityCheck() {
     // auto method = PlayIntegrity::getDescriptor()->getMethod("()V", "nativePlayIntegrityComplete");
     // FakeJni::LocalFrame frame;
