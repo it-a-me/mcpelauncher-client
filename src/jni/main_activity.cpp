@@ -264,7 +264,7 @@ FakeJni::JBoolean MainActivity::supportsSizeQuery(std::shared_ptr<FakeJni::JStri
 FakeJni::JLong MainActivity::getAllocatableBytes(std::shared_ptr<FakeJni::JString> path) {
     // const char* rpath = path->data();
     // printf("getAllocatableBytes: %s\n", rpath);
-    return 1024L * 1024L * 1024L * 1024L;
+    return 1024LL * 1024LL * 1024LL * 1024LL;
 }
 
 void MainActivity::startPlayIntegrityCheck() {
