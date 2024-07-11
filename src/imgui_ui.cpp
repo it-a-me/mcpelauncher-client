@@ -38,6 +38,42 @@ static std::string_view myGlGetString(GLenum t) {
     return (const char*)raw;
 }
 
+static void ReloadFont() {
+    ImGuiIO& io = ImGui::GetIO();
+    ImFontConfig fontConfig;
+    fontConfig.FontDataOwnedByAtlas = false;
+    fontConfig.OversampleH = 1; // Disable horizontal oversampling
+    fontConfig.OversampleV = 1; // Disable vertical oversampling
+    fontConfig.PixelSnapH = true; // Snap to integer pixel positions
+
+
+    // One of these three fonts is present in all Minecraft versions newer than 1.0 (earliest supproted by launcher)
+    std::string path = PathHelper::getGameDir() + "/assets/assets/fonts/Mojangles.ttf";
+    if (!PathHelper::fileExists(path)) {
+        path = PathHelper::getGameDir() + "/assets/fonts/Mojangles.ttf";
+            if (!PathHelper::fileExists(path)) {
+                path = PathHelper::getGameDir() + "/assets/fonts/SegoeWP.ttf";
+            }
+    }
+
+    size_t data_size = 0;
+    void* data = ImFileLoadToMemory(path.data(), "rb", &data_size, 0);
+
+    io.Fonts->Clear();
+    fontDefaultSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 15 * Settings::scale, &fontConfig);
+    io.FontDefault = fontDefaultSize;
+
+    fontMediumSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, (int)(18 * (1 + (Settings::scale - 1) * 0.5f)), &fontConfig);
+
+    fontLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, (int)(24 * (1 + (Settings::scale - 1) * 0.6f)), &fontConfig);
+
+    fontVeryLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, (int)(36 * (1 + (Settings::scale - 1) * 1.0f)), &fontConfig);
+
+    IM_FREE(data);
+
+    ImGui_ImplOpenGL3_CreateFontsTexture();
+}
+
 void ImGuiUIInit(GameWindow* window) {
     if(!glGetString) {
         return;
@@ -78,35 +114,7 @@ void ImGuiUIInit(GameWindow* window) {
 
     ImGui_ImplOpenGL3_Init("#version 100");
 
-    ImFontConfig fontConfig;
-    fontConfig.FontDataOwnedByAtlas = false;
-    fontConfig.OversampleH = 1; // Disable horizontal oversampling
-    fontConfig.OversampleV = 1; // Disable vertical oversampling
-    fontConfig.PixelSnapH = true; // Snap to integer pixel positions
-
-
-    // One of these three fonts is present in all Minecraft versions newer than 1.0 (earliest supproted by launcher)
-    std::string path = PathHelper::getGameDir() + "/assets/assets/fonts/Mojangles.ttf";
-    if (!PathHelper::fileExists(path)) {
-        path = PathHelper::getGameDir() + "/assets/fonts/Mojangles.ttf";
-            if (!PathHelper::fileExists(path)) {
-                path = PathHelper::getGameDir() + "/assets/fonts/SegoeWP.ttf";
-            }
-    }
-
-    size_t data_size = 0;
-    void* data = ImFileLoadToMemory(path.data(), "rb", &data_size, 0);
-
-    fontDefaultSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 15 * Settings::scale, &fontConfig);
-    io.FontDefault = fontDefaultSize;
-
-    fontMediumSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 18 * Settings::scale, &fontConfig);
-
-    fontLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 24 * Settings::scale, &fontConfig);
-
-    fontVeryLargeSize = io.Fonts->AddFontFromMemoryTTF(data, data_size, 36 * Settings::scale, &fontConfig);
-
-    IM_FREE(data);
+    ReloadFont();
 
     auto modes = window->getFullscreenModes();
     for(auto&& mode : modes) {
@@ -137,6 +145,8 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     if(!Settings::enable_imgui.value_or(allowGPU) || !glViewport) {
         return;
     }
+    bool reloadFont = false;
+    int oldScale = Settings::scale;
     ImGuiIO& io = ImGui::GetIO();
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
@@ -283,6 +293,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
                     if (ImGui::MenuItem((std::to_string(i) + "x").data(), nullptr, Settings::scale == i)) {
                         Settings::scale = i;
                         Settings::save();
+                        reloadFont = true;
                     }
                 }
                 ImGui::EndMenu();
@@ -625,4 +636,9 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     // Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    if(reloadFont) {
+        ReloadFont();
+        ImGui::GetStyle().ScaleAllSizes((float)Settings::scale / oldScale);
+    }
 }

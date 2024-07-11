@@ -187,15 +187,9 @@ public:
         return std::make_shared<HardwareInfo>();
     }
 
-    FakeJni::JFloat getPixelsPerMillimeter() {
-        // assume 96 DPI for now with GUI scale of 2
-        return (96 / 25.4f) * 2;
-    }
+    FakeJni::JFloat getPixelsPerMillimeter();
 
-    FakeJni::JInt getPlatformDpi() {
-        // assume 96 DPI for now with GUI scale of 2
-        return 96 * 2;
-    }
+    FakeJni::JInt getPlatformDpi();
 
     std::shared_ptr<FakeJni::JString> createUUID();
 

@@ -28,6 +28,16 @@ std::shared_ptr<FakeJni::JString> MainActivity::createUUID() {
     return UUID::randomUUID()->toString();
 }
 
+FakeJni::JFloat MainActivity::getPixelsPerMillimeter() {
+    // assume 96 DPI for now with GUI scale of 2
+    return (96 / 25.4f) * 2 * Settings::scale;
+}
+
+FakeJni::JInt MainActivity::getPlatformDpi() {
+    // assume 96 DPI for now with GUI scale of 2
+    return 96 * 2 * Settings::scale;
+}
+
 FakeJni::JLong MainActivity::getUsedMemory() {
 #ifdef __APPLE__
     uint64_t page_size;
