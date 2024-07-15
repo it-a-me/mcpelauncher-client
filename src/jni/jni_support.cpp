@@ -268,6 +268,22 @@ void JniSupport::startGame(ANativeActivity_createFunc *activityOnCreate,
 
 }
 
+static std::string urlDecode(const std::string &encoded) {
+    std::ostringstream decoded;
+    for(size_t i=0; i < encoded.length(); ++i) {
+        if(encoded.at(i) == '%' && i + 2 < encoded.length()) {
+            std::istringstream in(encoded.substr(i+1, 2));
+            short c;
+            in >> std::hex >> c;
+            decoded << (char&)c;
+            i += 2;
+        } else {
+            decoded << encoded.at(i);
+        }
+    }
+    return decoded.str();
+}
+
 void JniSupport::sendUri(std::string uri) {
     if (uri.find("minecraft://") != std::string::npos) {
         FakeJni::LocalFrame frame(vm);
@@ -284,7 +300,8 @@ void JniSupport::sendUri(std::string uri) {
         std::regex query_regex(R"(\?([^#]+))");
         std::smatch query_match;
         if (std::regex_search(uri, query_match, query_regex)) {
-            query = query_match[1].str();
+            // This is lossy, but the native code has this interface without proper escaping support
+            query = urlDecode(query_match[1].str());
         }
 
         auto urlLaunch = activity->getClass().getMethod("(Ljava/lang/String;Ljava/lang/String;)V", "nativeProcessIntentUriQuery");
