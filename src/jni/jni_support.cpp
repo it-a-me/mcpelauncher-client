@@ -32,6 +32,7 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <regex>
+#include <sstream>
 #if !defined(_GLIBCXX_RELEASE) || _GLIBCXX_RELEASE > 8
 #include <filesystem>
 #endif
