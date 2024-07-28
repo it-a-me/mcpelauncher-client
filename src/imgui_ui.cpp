@@ -18,6 +18,8 @@
 #include <chrono>
 #include <sstream>
 #include "window_callbacks.h"
+#include <mutex>
+#include <mcpelauncher/linker.h>
 
 static double g_Time = 0.0;
 static bool allowGPU = true;
@@ -74,6 +76,45 @@ static void ReloadFont() {
     IM_FREE(data);
 
     ImGui_ImplOpenGL3_CreateFontsTexture();
+}
+
+
+struct MenuEntry {
+    std::string name;
+    std::function<bool()> selected;
+    std::function<void()> click;
+    std::vector<MenuEntry> subentries;
+};
+
+static std::vector<MenuEntry> menuentries;
+static std::mutex menuentrieslock;
+
+static void convertEntries(std::vector<MenuEntry>& menuentries, size_t length, MenuEntryABI* entries) {
+    for(size_t i = 0; i < length; i++) {
+        std::vector<MenuEntry> subentries;
+        convertEntries(subentries, entries[i].length, entries[i].subentries);
+        menuentries.emplace_back(MenuEntry{ .name = entries[i].name, .selected = std::bind(entries[i].selected, entries[i].user), .click = std::bind(entries[i].click, entries[i].user), .subentries = subentries });
+    }
+}
+
+static void appendMenu(std::vector<MenuEntry>& menuentries) {
+    for(size_t i = 0; i < menuentries.size(); i++) {
+        if(menuentries[i].subentries.size()) {
+            if(ImGui::BeginMenu(menuentries[i].name.data())) {
+                appendMenu(menuentries[i].subentries);
+                ImGui::EndMenu();
+            }
+        } else if(ImGui::MenuItem(menuentries[i].name.data(), nullptr, menuentries[i].selected(), true)) {
+            menuentries[i].click();
+        }
+    }
+}
+
+
+void mcpelauncher_addmenu(size_t length, MenuEntryABI* entries) {
+    menuentrieslock.lock();
+    convertEntries(menuentries, length, entries);
+    menuentrieslock.unlock();
 }
 
 void ImGuiUIInit(GameWindow* window) {
@@ -230,6 +271,10 @@ void ImGuiUIDrawFrame(GameWindow* window) {
             if(ImGui::MenuItem("Enable Keyboard AutoFocus Patches for 1.20.60+", nullptr, Settings::enable_keyboard_autofocus_patches_1_20_60)) {
                 Settings::enable_keyboard_autofocus_patches_1_20_60 ^= true;
                 Settings::save();
+            }
+            if(menuentrieslock.try_lock()) {
+                appendMenu(menuentries);
+                menuentrieslock.unlock();
             }
             ImGui::EndMenu();
         }

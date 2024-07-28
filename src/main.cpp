@@ -42,6 +42,7 @@
 #include <simpleipc/client/service_client.h>
 #include <daemon_utils/auto_shutdown_service.h>
 #include "settings.h"
+#include "imgui_ui.h"
 
 struct RpcCallbackServer : daemon_utils::auto_shutdown_service {
 
@@ -358,6 +359,11 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
     for(auto s = android_symbols; *s; s++)  // stub missing symbols
         android_syms.insert({*s, (void*)+[]() { Log::warn("Main", "Android stub called"); }});
     linker::load_library("libandroid.so", android_syms);
+
+    linker::load_library("libmcpelauncher-menu.so", {
+        { "mcpelauncher_addmenu", (void*)mcpelauncher_addmenu },
+    });
+
     ModLoader modLoader;
     if(!freeOnly.get()) {
         modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
