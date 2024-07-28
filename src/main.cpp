@@ -112,6 +112,7 @@ int main(int argc, char* argv[]) {
     argparser::arg<bool> stdinImpt(p, "--stdin-import", "-si", "Use stdin for file import", false);
     argparser::arg<bool> resetSettings(p, "--reset-settings", "-gs", "Save the default Settings", false);
     argparser::arg<bool> freeOnly(p, "--free-only", "-f", "Only allow starting free versions", false);
+    argparser::arg<std::string> mods(p, "--mods", "-m", "Additional directories to load mods from split by ','", "");
 
     if(!p.parse(argc, (const char**)argv))
         return 1;
@@ -125,6 +126,17 @@ int main(int argc, char* argv[]) {
     options.windowHeight = windowHeight;
     options.graphicsApi = forceEgl.get() ? GraphicsApi::OPENGL_ES2 : GraphicsApi::OPENGL;
     options.useStdinImport = stdinImpt;
+    std::vector<std::string> modDirs;
+    for(size_t i = 0; i < mods.get().length();) {
+        auto r = mods.get().find(',', i);
+        if(r == std::string::npos) {
+            modDirs.push_back(mods.get().substr(i));
+            break;
+        } else {
+            modDirs.push_back(mods.get().substr(i, r - i));
+            i = r + 1;
+        }
+    }
 
     FakeEGL::enableTexturePatch = texturePatch.get();
 
@@ -367,6 +379,9 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
     ModLoader modLoader;
     if(!freeOnly.get()) {
         modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
+        for(auto&& d : modDirs) {
+            modLoader.loadModsFromDirectory(d, true);
+        }
     }
 
     Log::trace("Launcher", "Loading Minecraft library");
@@ -401,6 +416,9 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
 
     if(!freeOnly.get()) {
         modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/");
+        for(auto&& d : modDirs) {
+            modLoader.loadModsFromDirectory(d);
+        }
     }
 
     Log::info("Launcher", "Game version: %s", MinecraftVersion::getString().c_str());
