@@ -392,6 +392,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
         // Unload empty stub library
         auto libGLESv2 = linker::dlopen("libGLESv2.so", 0);
         linker::dlclose(libGLESv2);
+        linker::unload_library(libGLESv2);
         // load fake libGLESv2 library
         // GLFW needs a window to let eglGetProcAddress return symbols
         FakeLooper::initWindow();
