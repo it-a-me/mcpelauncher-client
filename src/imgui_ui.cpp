@@ -86,8 +86,98 @@ struct MenuEntry {
     std::vector<MenuEntry> subentries;
 };
 
+struct WindowControl
+{
+   WindowControl() {
+    
+   }
+   WindowControl(WindowControl&& control) {
+    type = control.type;
+    memcpy(&data, &control.data, sizeof(control.data));
+    control.type = -1;
+   }
+   int type = -1;
+   union Data {
+    Data() {
+
+    }
+    struct {
+      std::string label;
+      void* user;
+      void(*onClick)(void* user);
+    } button;
+    struct {
+      std::string label;
+      int min;
+      int def;
+      int max;
+      int step;
+      void* user;
+      void(*onChange)(void* user, int value);
+    } sliderint;
+    struct {
+      std::string label;
+      float min;
+      float def;
+      float max;
+      float step;
+      void* user;
+      void(*onChange)(void* user, float value);
+    } sliderfloat;
+    struct {
+      std::string label;
+      int size; // 0 normal/ 1 small titel...
+    } text;
+    struct {
+      std::string label;
+      std::string def;
+      std::string placeholder;
+      void* user;
+      void(*onChange)(void* user, const char* value);
+    } textinput;
+    ~Data() {}
+  } data;
+
+  ~WindowControl() {
+    switch (type)
+    {
+    case 0:
+        data.button.label.~basic_string();
+        break;
+    case 1:
+        data.sliderint.label.~basic_string();
+        break;
+    case 2:
+        data.sliderfloat.label.~basic_string();
+        break;
+    case 3:
+        data.text.label.~basic_string();
+        break;
+    case 4:
+        data.textinput.label.~basic_string();
+        data.textinput.def.~basic_string();
+        data.textinput.placeholder.~basic_string();
+        break;
+    
+    default:
+        break;
+    }
+  }
+};
+
+struct ActiveWindow {
+    std::string title;
+    bool isModal;
+    bool open;
+    void* user;
+    void (*onClose)(void *user);
+    std::vector<WindowControl> controls;
+};
+
 static std::vector<MenuEntry> menuentries;
 static std::mutex menuentrieslock;
+static std::vector<std::shared_ptr<ActiveWindow>> activeWindows;
+static std::mutex activeWindowsLock;
 
 static void convertEntries(std::vector<MenuEntry>& menuentries, size_t length, MenuEntryABI* entries) {
     for(size_t i = 0; i < length; i++) {
@@ -115,6 +205,62 @@ void mcpelauncher_addmenu(size_t length, MenuEntryABI* entries) {
     menuentrieslock.lock();
     convertEntries(menuentries, length, entries);
     menuentrieslock.unlock();
+}
+
+void mcpelauncher_show_window(const char *title, int isModal, void *user, void (*onClose)(void *user), int count, control *controls) {
+    activeWindowsLock.lock();
+    std::vector<WindowControl> subentries(count);
+    for(int i = 0; i < count; i++) {
+        subentries[i].type = controls[i].type;
+        switch (controls[i].type)
+        {
+        case 0:
+            subentries[i].data.button.label = controls[i].data.button.label ? controls[i].data.button.label : "";
+            subentries[i].data.button.user = controls[i].data.button.user;
+            subentries[i].data.button.onClick = controls[i].data.button.onClick;
+            break;
+        case 1:
+            subentries[i].data.sliderint.label = controls[i].data.sliderint.label ? controls[i].data.sliderint.label : "";
+            subentries[i].data.sliderint.step = controls[i].data.sliderint.step;
+            subentries[i].data.sliderint.def = controls[i].data.sliderint.def;
+            subentries[i].data.sliderint.max = controls[i].data.sliderint.max;
+            subentries[i].data.sliderint.min = controls[i].data.sliderint.min;
+            subentries[i].data.sliderint.user = controls[i].data.sliderint.user;
+            subentries[i].data.sliderint.onChange = controls[i].data.sliderint.onChange;
+            break;
+        case 2:
+            subentries[i].data.sliderfloat.label = controls[i].data.sliderfloat.label ? controls[i].data.sliderfloat.label : "";
+            subentries[i].data.sliderfloat.step = controls[i].data.sliderfloat.step;
+            subentries[i].data.sliderfloat.def = controls[i].data.sliderfloat.def;
+            subentries[i].data.sliderfloat.max = controls[i].data.sliderfloat.max;
+            subentries[i].data.sliderfloat.min = controls[i].data.sliderfloat.min;
+            subentries[i].data.sliderfloat.user = controls[i].data.sliderfloat.user;
+            subentries[i].data.sliderfloat.onChange = controls[i].data.sliderfloat.onChange;
+            break;
+        case 3:
+            subentries[i].data.text.label = controls[i].data.text.label ? controls[i].data.text.label : "";
+            subentries[i].data.text.size = controls[i].data.text.size;
+            break;
+        case 4:
+            subentries[i].data.textinput.label = controls[i].data.textinput.label ? controls[i].data.textinput.label : "";
+            subentries[i].data.textinput.def = controls[i].data.textinput.def ? controls[i].data.textinput.def : "";
+            subentries[i].data.textinput.placeholder = controls[i].data.textinput.placeholder ? controls[i].data.textinput.placeholder : "";
+            subentries[i].data.textinput.user = controls[i].data.textinput.user;
+            subentries[i].data.textinput.onChange = controls[i].data.textinput.onChange;
+            break;
+        
+        default:
+            break;
+        }
+    }
+    activeWindows.push_back(std::make_shared<ActiveWindow>(ActiveWindow{
+        .title = title ? title : "Untitled",
+        .isModal = !!isModal,
+        .user = user,
+        .onClose = onClose,
+        .controls = std::move(subentries),
+    }));
+    activeWindowsLock.unlock();
 }
 
 void ImGuiUIInit(GameWindow* window) {
@@ -672,6 +818,93 @@ void ImGuiUIDrawFrame(GameWindow* window) {
         ImGui::PopFont();
 
         ImGui::End();
+    }
+    // Custom Windows
+    if(activeWindowsLock.try_lock()) {
+
+        for(size_t i = 0, len = activeWindows.size(); i < len; i++) {
+            
+            if(activeWindows[i]->isModal ? ImGui::BeginPopupModal(activeWindows[i]->title.data(), &activeWindows[i]->open) : ImGui::Begin(activeWindows[i]->title.data(), &activeWindows[i]->open)) {
+                
+                if(activeWindows[i]->isModal) {
+                    for(auto&& control : activeWindows[i]->controls) {
+                        switch (control.type)
+                        {
+                        case 0:
+                            if(ImGui::Button(control.data.button.label.data())) {
+                                control.data.button.onClick(control.data.button.user);
+                            }
+                            break;
+                        case 1:
+                            if(control.data.sliderint.label.length() > 0) {
+                                ImGui::Text("%s", control.data.sliderint.label.data());
+                            }
+                            if(ImGui::SliderInt(control.data.sliderint.label.data(), &control.data.sliderint.def, control.data.sliderint.min, control.data.sliderint.max)) {
+                                control.data.sliderint.onChange(control.data.sliderint.user, control.data.sliderint.def);
+                            }
+                            break;
+                        case 2:
+                            if(control.data.sliderint.label.length() > 0) {
+                                ImGui::Text("%s", control.data.sliderint.label.data());
+                            }
+                            if(ImGui::SliderInt(control.data.sliderint.label.data(), &control.data.sliderint.def, control.data.sliderint.min, control.data.sliderint.max)) {
+                                control.data.sliderint.onChange(control.data.sliderint.user, control.data.sliderint.def);
+                            }
+                            break;
+                        case 3: {
+                            ImFont *font = nullptr;
+                            switch(control.data.text.size) {
+                                case 1:
+                                font = fontMediumSize;
+                                break;
+                                case 2:
+                                font = fontLargeSize;
+                                break;
+                                case 3:
+                                font = fontVeryLargeSize;
+                                break;
+                            }
+                            if(font) {
+                                ImGui::PushFont(font);
+                            }
+                            if(control.data.text.label.length() > 0) {
+                                ImGui::Text("%s", control.data.text.label.data());
+                            }
+                            if(font) {
+                                ImGui::PopFont();
+                            }
+                            break;
+                        }
+                        case 4:
+                            ImGui::InputTextWithHint(control.data.textinput.label.data(), control.data.textinput.label.data(), control.data.textinput.def.data(), control.data.textinput.def.capacity() + 1, 0, [](ImGuiInputTextCallbackData* ev) -> int{
+                                if(ev->EventFlag == ImGuiInputTextFlags_CallbackResize)
+                                {
+                                    std::string& str = ((WindowControl*)ev->UserData)->data.textinput.def;
+                                    str.resize(ev->BufTextLen);
+                                    ev->Buf = (char*)str.c_str();
+                                } else if(ev->EventFlag == ImGuiInputTextFlags_CallbackEdit) {
+                                    ((WindowControl*)ev->UserData)->data.textinput.onChange(((WindowControl*)ev->UserData)->data.textinput.user, ev->Buf);
+                                }
+                                return 0;
+                            }, &control);
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    ImGui::EndPopup();
+                } else {
+                    ImGui::End();
+                }
+            }
+            if(!activeWindows[i]->open) {
+                activeWindows[i]->onClose(activeWindows[i]->user);
+                activeWindows.erase(activeWindows.begin() + i);
+                --i;
+                --len;
+            }
+        }
+        activeWindowsLock.unlock();
     }
 
     // Rendering
