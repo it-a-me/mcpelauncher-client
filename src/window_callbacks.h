@@ -30,6 +30,7 @@ private:
     bool modCTRL = false;
     bool needsQueueGamepadInput = true;
     bool sendEvents = false;
+    bool imguiTextInput = false;
     int menubarsize = 0;
     enum class InputMode {
         Touch,

@@ -168,7 +168,8 @@ struct WindowControl
 struct ActiveWindow {
     std::string title;
     bool isModal;
-    bool open;
+    bool open = true;
+    bool modalOpened = false;
     void* user;
     void (*onClose)(void *user);
     std::vector<WindowControl> controls;
@@ -215,12 +216,12 @@ void mcpelauncher_show_window(const char *title, int isModal, void *user, void (
         switch (controls[i].type)
         {
         case 0:
-            subentries[i].data.button.label = controls[i].data.button.label ? controls[i].data.button.label : "";
+            new(&subentries[i].data.button.label) std::string(controls[i].data.button.label ? controls[i].data.button.label : "");
             subentries[i].data.button.user = controls[i].data.button.user;
             subentries[i].data.button.onClick = controls[i].data.button.onClick;
             break;
         case 1:
-            subentries[i].data.sliderint.label = controls[i].data.sliderint.label ? controls[i].data.sliderint.label : "";
+            new(&subentries[i].data.sliderint.label) std::string(controls[i].data.sliderint.label ? controls[i].data.sliderint.label : "");
             subentries[i].data.sliderint.step = controls[i].data.sliderint.step;
             subentries[i].data.sliderint.def = controls[i].data.sliderint.def;
             subentries[i].data.sliderint.max = controls[i].data.sliderint.max;
@@ -229,7 +230,7 @@ void mcpelauncher_show_window(const char *title, int isModal, void *user, void (
             subentries[i].data.sliderint.onChange = controls[i].data.sliderint.onChange;
             break;
         case 2:
-            subentries[i].data.sliderfloat.label = controls[i].data.sliderfloat.label ? controls[i].data.sliderfloat.label : "";
+            new(&subentries[i].data.sliderfloat.label) std::string(controls[i].data.sliderfloat.label ? controls[i].data.sliderfloat.label : "");
             subentries[i].data.sliderfloat.step = controls[i].data.sliderfloat.step;
             subentries[i].data.sliderfloat.def = controls[i].data.sliderfloat.def;
             subentries[i].data.sliderfloat.max = controls[i].data.sliderfloat.max;
@@ -238,13 +239,13 @@ void mcpelauncher_show_window(const char *title, int isModal, void *user, void (
             subentries[i].data.sliderfloat.onChange = controls[i].data.sliderfloat.onChange;
             break;
         case 3:
-            subentries[i].data.text.label = controls[i].data.text.label ? controls[i].data.text.label : "";
+            new(&subentries[i].data.text.label) std::string(controls[i].data.text.label ? controls[i].data.text.label : "");
             subentries[i].data.text.size = controls[i].data.text.size;
             break;
         case 4:
-            subentries[i].data.textinput.label = controls[i].data.textinput.label ? controls[i].data.textinput.label : "";
-            subentries[i].data.textinput.def = controls[i].data.textinput.def ? controls[i].data.textinput.def : "";
-            subentries[i].data.textinput.placeholder = controls[i].data.textinput.placeholder ? controls[i].data.textinput.placeholder : "";
+            new(&subentries[i].data.textinput.label) std::string(controls[i].data.textinput.label ? controls[i].data.textinput.label : "");
+            new(&subentries[i].data.textinput.def) std::string(controls[i].data.textinput.def ? controls[i].data.textinput.def : "");
+            new(&subentries[i].data.textinput.placeholder) std::string(controls[i].data.textinput.placeholder ? controls[i].data.textinput.placeholder : "");
             subentries[i].data.textinput.user = controls[i].data.textinput.user;
             subentries[i].data.textinput.onChange = controls[i].data.textinput.onChange;
             break;
@@ -824,74 +825,78 @@ void ImGuiUIDrawFrame(GameWindow* window) {
 
         for(size_t i = 0, len = activeWindows.size(); i < len; i++) {
             
+            if(activeWindows[i]->isModal && !activeWindows[i]->modalOpened) {
+                activeWindows[i]->modalOpened = true;
+                ImGui::OpenPopup(activeWindows[i]->title.data());
+            }
             if(activeWindows[i]->isModal ? ImGui::BeginPopupModal(activeWindows[i]->title.data(), &activeWindows[i]->open) : ImGui::Begin(activeWindows[i]->title.data(), &activeWindows[i]->open)) {
                 
-                if(activeWindows[i]->isModal) {
-                    for(auto&& control : activeWindows[i]->controls) {
-                        switch (control.type)
-                        {
-                        case 0:
-                            if(ImGui::Button(control.data.button.label.data())) {
-                                control.data.button.onClick(control.data.button.user);
-                            }
+                for(auto&& control : activeWindows[i]->controls) {
+                    switch (control.type)
+                    {
+                    case 0:
+                        if(ImGui::Button(control.data.button.label.data())) {
+                            control.data.button.onClick(control.data.button.user);
+                        }
+                        break;
+                    case 1:
+                        if(control.data.sliderint.label.length() > 0) {
+                            ImGui::Text("%s", control.data.sliderint.label.data());
+                        }
+                        if(ImGui::SliderInt(control.data.sliderint.label.data(), &control.data.sliderint.def, control.data.sliderint.min, control.data.sliderint.max)) {
+                            control.data.sliderint.onChange(control.data.sliderint.user, control.data.sliderint.def);
+                        }
+                        break;
+                    case 2:
+                        if(control.data.sliderfloat.label.length() > 0) {
+                            ImGui::Text("%s", control.data.sliderfloat.label.data());
+                        }
+                        if(ImGui::SliderFloat(control.data.sliderfloat.label.data(), &control.data.sliderfloat.def, control.data.sliderfloat.min, control.data.sliderfloat.max)) {
+                            control.data.sliderfloat.onChange(control.data.sliderfloat.user, control.data.sliderfloat.def);
+                        }
+                        break;
+                    case 3: {
+                        ImFont *font = nullptr;
+                        switch(control.data.text.size) {
+                            case 1:
+                            font = fontMediumSize;
                             break;
-                        case 1:
-                            if(control.data.sliderint.label.length() > 0) {
-                                ImGui::Text("%s", control.data.sliderint.label.data());
-                            }
-                            if(ImGui::SliderInt(control.data.sliderint.label.data(), &control.data.sliderint.def, control.data.sliderint.min, control.data.sliderint.max)) {
-                                control.data.sliderint.onChange(control.data.sliderint.user, control.data.sliderint.def);
-                            }
+                            case 2:
+                            font = fontLargeSize;
                             break;
-                        case 2:
-                            if(control.data.sliderint.label.length() > 0) {
-                                ImGui::Text("%s", control.data.sliderint.label.data());
-                            }
-                            if(ImGui::SliderInt(control.data.sliderint.label.data(), &control.data.sliderint.def, control.data.sliderint.min, control.data.sliderint.max)) {
-                                control.data.sliderint.onChange(control.data.sliderint.user, control.data.sliderint.def);
-                            }
-                            break;
-                        case 3: {
-                            ImFont *font = nullptr;
-                            switch(control.data.text.size) {
-                                case 1:
-                                font = fontMediumSize;
-                                break;
-                                case 2:
-                                font = fontLargeSize;
-                                break;
-                                case 3:
-                                font = fontVeryLargeSize;
-                                break;
-                            }
-                            if(font) {
-                                ImGui::PushFont(font);
-                            }
-                            if(control.data.text.label.length() > 0) {
-                                ImGui::Text("%s", control.data.text.label.data());
-                            }
-                            if(font) {
-                                ImGui::PopFont();
-                            }
+                            case 3:
+                            font = fontVeryLargeSize;
                             break;
                         }
-                        case 4:
-                            ImGui::InputTextWithHint(control.data.textinput.label.data(), control.data.textinput.label.data(), control.data.textinput.def.data(), control.data.textinput.def.capacity() + 1, 0, [](ImGuiInputTextCallbackData* ev) -> int{
-                                if(ev->EventFlag == ImGuiInputTextFlags_CallbackResize)
-                                {
-                                    std::string& str = ((WindowControl*)ev->UserData)->data.textinput.def;
-                                    str.resize(ev->BufTextLen);
-                                    ev->Buf = (char*)str.c_str();
-                                } else if(ev->EventFlag == ImGuiInputTextFlags_CallbackEdit) {
-                                    ((WindowControl*)ev->UserData)->data.textinput.onChange(((WindowControl*)ev->UserData)->data.textinput.user, ev->Buf);
-                                }
-                                return 0;
-                            }, &control);
-                            break;
-                        default:
-                            break;
+                        if(font) {
+                            ImGui::PushFont(font);
                         }
+                        if(control.data.text.label.length() > 0) {
+                            ImGui::Text("%s", control.data.text.label.data());
+                        }
+                        if(font) {
+                            ImGui::PopFont();
+                        }
+                        break;
                     }
+                    case 4:
+                        ImGui::InputTextWithHint(control.data.textinput.label.data(), control.data.textinput.label.data(), control.data.textinput.def.data(), control.data.textinput.def.capacity() + 1, ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_CallbackEdit, [](ImGuiInputTextCallbackData* ev) -> int{
+                            if(ev->EventFlag == ImGuiInputTextFlags_CallbackResize)
+                            {
+                                std::string& str = ((WindowControl*)ev->UserData)->data.textinput.def;
+                                str.resize(ev->BufTextLen);
+                                ev->Buf = (char*)str.c_str();
+                            } else if(ev->EventFlag == ImGuiInputTextFlags_CallbackEdit) {
+                                ((WindowControl*)ev->UserData)->data.textinput.onChange(((WindowControl*)ev->UserData)->data.textinput.user, ev->Buf);
+                            }
+                            return 0;
+                        }, &control);
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                if(activeWindows[i]->isModal) {
                     ImGui::EndPopup();
                 } else {
                     ImGui::End();

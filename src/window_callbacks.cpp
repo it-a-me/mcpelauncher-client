@@ -127,6 +127,14 @@ void WindowCallbacks::onMouseButton(double x, double y, int btn, MouseButtonActi
             ImGuiIO& io = ImGui::GetIO();
             io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
             io.AddMouseButtonEvent(btn - 1, action != MouseButtonAction::RELEASE);
+            if(io.WantTextInput != imguiTextInput) {
+                imguiTextInput = io.WantTextInput;
+                if(io.WantTextInput) {
+                    window.startTextInput();
+                } else {
+                    window.stopTextInput();
+                }
+            }
             if(io.WantCaptureMouse) {
                 return;
             }
@@ -369,7 +377,15 @@ void WindowCallbacks::onKeyboard(KeyCode key, KeyAction action) {
             ImGuiIO& io = ImGui::GetIO();
             io.AddKeyEvent(mapImGuiModKey(key), action != KeyAction::RELEASE);
             io.AddKeyEvent(mapImGuiKey(key), action != KeyAction::RELEASE);
-            if(io.WantCaptureKeyboard) {
+            if(io.WantTextInput != imguiTextInput) {
+                imguiTextInput = io.WantTextInput;
+                if(io.WantTextInput) {
+                    window.startTextInput();
+                } else {
+                    window.stopTextInput();
+                }
+            }
+            if(io.WantCaptureKeyboard || io.WantTextInput) {
                 return;
             }
         }
