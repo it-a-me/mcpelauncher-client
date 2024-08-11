@@ -111,7 +111,6 @@ struct WindowControl
       int min;
       int def;
       int max;
-      int step;
       void* user;
       void(*onChange)(void* user, int value);
     } sliderint;
@@ -120,7 +119,6 @@ struct WindowControl
       float min;
       float def;
       float max;
-      float step;
       void* user;
       void(*onChange)(void* user, float value);
     } sliderfloat;
@@ -222,7 +220,6 @@ void mcpelauncher_show_window(const char *title, int isModal, void *user, void (
             break;
         case 1:
             new(&subentries[i].data.sliderint.label) std::string(controls[i].data.sliderint.label ? controls[i].data.sliderint.label : "");
-            subentries[i].data.sliderint.step = controls[i].data.sliderint.step;
             subentries[i].data.sliderint.def = controls[i].data.sliderint.def;
             subentries[i].data.sliderint.max = controls[i].data.sliderint.max;
             subentries[i].data.sliderint.min = controls[i].data.sliderint.min;
@@ -231,7 +228,6 @@ void mcpelauncher_show_window(const char *title, int isModal, void *user, void (
             break;
         case 2:
             new(&subentries[i].data.sliderfloat.label) std::string(controls[i].data.sliderfloat.label ? controls[i].data.sliderfloat.label : "");
-            subentries[i].data.sliderfloat.step = controls[i].data.sliderfloat.step;
             subentries[i].data.sliderfloat.def = controls[i].data.sliderfloat.def;
             subentries[i].data.sliderfloat.max = controls[i].data.sliderfloat.max;
             subentries[i].data.sliderfloat.min = controls[i].data.sliderfloat.min;
@@ -254,13 +250,33 @@ void mcpelauncher_show_window(const char *title, int isModal, void *user, void (
             break;
         }
     }
-    activeWindows.push_back(std::make_shared<ActiveWindow>(ActiveWindow{
-        .title = title ? title : "Untitled",
-        .isModal = !!isModal,
-        .user = user,
-        .onClose = onClose,
-        .controls = std::move(subentries),
-    }));
+
+    if(auto activeWindow = std::find_if(activeWindows.begin(), activeWindows.end(), [title](auto&& wnd) {
+            return wnd->title == (title ? title : "Untitled");
+        }); activeWindow != activeWindows.end()) {
+        (*activeWindow)->isModal = !!isModal;
+        (*activeWindow)->user = user;
+        (*activeWindow)->onClose = onClose;
+        (*activeWindow)->controls = std::move(subentries);
+    } else {
+        activeWindows.push_back(std::make_shared<ActiveWindow>(ActiveWindow{
+            .title = title ? title : "Untitled",
+            .isModal = !!isModal,
+            .user = user,
+            .onClose = onClose,
+            .controls = std::move(subentries),
+        }));
+    }
+    activeWindowsLock.unlock();
+}
+
+void mcpelauncher_close_window(const char *title) {
+    activeWindowsLock.lock();
+    if(auto activeWindow = std::find_if(activeWindows.begin(), activeWindows.end(), [title](auto&& wnd) {
+            return wnd->title == (title ? title : "Untitled");
+        }); activeWindow != activeWindows.end()) {
+        activeWindows.erase(activeWindow);
+    }
     activeWindowsLock.unlock();
 }
 
