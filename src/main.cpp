@@ -409,6 +409,15 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
         // Try load the game again
         handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen));
     }
+    if(!handle && !disableFmod) {
+        // 1.21.30.22 technically require newer fmod
+        auto libfmod = linker::dlopen("libfmod.so", 0);
+        linker::dlclose(libfmod);
+        linker::unload_library(libfmod);
+
+        // Try load the game again
+        handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen));
+    }
     if(!handle) {
         Log::error("Launcher", "Failed to load Minecraft library, please reinstall or wait for an update to support the new release");
         return 51;

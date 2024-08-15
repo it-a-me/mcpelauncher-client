@@ -318,6 +318,7 @@ BEGIN_NATIVE_DESCRIPTOR(HTTPResponse){Function<&HTTPResponse::getStatus>{}, "get
     BEGIN_NATIVE_DESCRIPTOR(AudioDevice){Constructor<AudioDevice>{}},
     {Function<&AudioDevice::init>{}, "init"},
     {Function<&AudioDevice::write>{}, "write"},
+    {Function<&AudioDevice::write2>{}, "write"},
     {Function<&AudioDevice::close>{}, "close"},
     END_NATIVE_DESCRIPTOR
 #endif

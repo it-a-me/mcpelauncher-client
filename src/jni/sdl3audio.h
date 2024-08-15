@@ -16,6 +16,7 @@ public:
     FakeJni::JBoolean init(FakeJni::JInt channels, FakeJni::JInt samplerate, FakeJni::JInt c, FakeJni::JInt d);
 
     void write(std::shared_ptr<FakeJni::JByteArray> data, FakeJni::JInt length);
+    void write2(std::shared_ptr<FakeJni::JShortArray> data, FakeJni::JInt length);
 
     void close();
 };

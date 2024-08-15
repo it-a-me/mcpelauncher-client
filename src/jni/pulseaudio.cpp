@@ -50,6 +50,16 @@ void AudioDevice::write(std::shared_ptr<FakeJni::JByteArray> data, FakeJni::JInt
     }
 }
 
+void AudioDevice::write2(std::shared_ptr<FakeJni::JShortArray> data, FakeJni::JInt length) {
+    int error = 0;
+    if(s && pa_simple_write(s, data->getArray(), length, &error)) {
+        pa_simple_free(s);
+        s = nullptr;
+        auto errormsg = pa_strerror(error);
+        GameWindowManager::getManager()->getErrorHandler()->onError("Pulseaudio failed", std::string("pulseaudio pa_simple_write failed, please reopen the Launcher to reconnect: ") + (errormsg ? errormsg : "No message from pulseaudio"));
+    }
+}
+
 void AudioDevice::close() {
     int error = 0;
     if(pa_simple_flush(s, &error)) {

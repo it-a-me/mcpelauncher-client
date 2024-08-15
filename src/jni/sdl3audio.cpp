@@ -39,6 +39,15 @@ void AudioDevice::write(std::shared_ptr<FakeJni::JByteArray> data, FakeJni::JInt
     }
 }
 
+void AudioDevice::write2(std::shared_ptr<FakeJni::JShortArray> data, FakeJni::JInt length) {
+    SDL_PutAudioStreamData(s, data->getArray(), length * 2);
+    // SDL3 cannot set any max buf size and fmod doesn't feeding data with the correct rate without it
+    // appeared as silence and a queue overflow
+    while(SDL_GetAudioStreamQueued(s) > maxBufferLen) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
 void AudioDevice::close() {
     SDL_DestroyAudioStream(s);
     s = nullptr;
