@@ -397,7 +397,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
                 auto id = ImGui::GetID("File");
                 ImGui::SetFocusID(id, w);
                 ImGuiContext& g = *ImGui::GetCurrentContext();
-                g.NavDisableHighlight = false;
+                g.NavCursorVisible = true;
             }
             menuFocused = true;
         }
