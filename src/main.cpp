@@ -345,7 +345,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
         try {
             MinecraftUtils::loadFMod();
         } catch(std::exception& e) {
-            Log::warn("FMOD", "Failed to load host libfmod: '%s', use experimental pulseaudio backend if available", e.what());
+            Log::info("FMOD", "Failed to load host libfmod: '%s', use pulseaudio/sdl3 backend with android fmod if available", e.what());
         }
     }
     FakeEGL::setProcAddrFunction((void* (*)(const char*))windowManager->getProcAddrFunc());
