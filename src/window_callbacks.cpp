@@ -199,24 +199,54 @@ void WindowCallbacks::onMouseScroll(double x, double y, double dx, double dy) {
         signed char cdy = (signed char)std::max(std::min(dy * 127.0, 127.0), -127.0);
 #endif
         if(useDirectMouseInput)
-            Mouse::feed(4, (char&)cdy, 0, 0, (short)x, (short)y);
+            Mouse::feed(4, (char&)cdy, 0, 0, (short)x, (short)y - Settings::menubarsize);
         else
-            inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_MOUSE, AMOTION_EVENT_ACTION_SCROLL, 0, x, y, buttonState, cdy));
+            inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_MOUSE, AMOTION_EVENT_ACTION_SCROLL, 0, x, y - Settings::menubarsize, buttonState, cdy));
     }
 }
 void WindowCallbacks::onTouchStart(int id, double x, double y) {
     if(hasInputMode(InputMode::Touch)) {
-        inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_TOUCHSCREEN, AMOTION_EVENT_ACTION_DOWN, id, x, y));
+#ifdef USE_IMGUI
+        if(ImGui::GetCurrentContext() && imGuiTouchId == -1) {
+            imGuiTouchId = id;
+            ImGuiIO& io = ImGui::GetIO();
+            io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
+            io.AddMousePosEvent(x, y);
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            if(io.WantCaptureMouse) {
+                return;
+            }
+        }
+#endif
+        inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_TOUCHSCREEN, AMOTION_EVENT_ACTION_DOWN, id, x, y - Settings::menubarsize));
     }
 }
 void WindowCallbacks::onTouchUpdate(int id, double x, double y) {
     if(hasInputMode(InputMode::Touch)) {
-        inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_TOUCHSCREEN, AMOTION_EVENT_ACTION_MOVE, id, x, y));
+#ifdef USE_IMGUI
+        if(ImGui::GetCurrentContext() && imGuiTouchId == id) {
+            ImGuiIO& io = ImGui::GetIO();
+            io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
+            io.AddMousePosEvent(x, y);
+            return;
+        }
+#endif
+        inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_TOUCHSCREEN, AMOTION_EVENT_ACTION_MOVE, id, x, y - Settings::menubarsize));
     }
 }
 void WindowCallbacks::onTouchEnd(int id, double x, double y) {
     if(hasInputMode(InputMode::Touch)) {
-        inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_TOUCHSCREEN, AMOTION_EVENT_ACTION_UP, id, x, y));
+#ifdef USE_IMGUI
+        if(ImGui::GetCurrentContext() && imGuiTouchId == id) {
+            imGuiTouchId = -1;
+            ImGuiIO& io = ImGui::GetIO();
+            io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
+            io.AddMousePosEvent(x, y);
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            return;
+        }
+#endif
+        inputQueue.addEvent(FakeMotionEvent(AINPUT_SOURCE_TOUCHSCREEN, AMOTION_EVENT_ACTION_UP, id, x, y - Settings::menubarsize));
     }
 }
 static bool deadKey(KeyCode key) {

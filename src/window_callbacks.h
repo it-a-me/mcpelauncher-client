@@ -38,6 +38,7 @@ private:
         Gamepad,
         Unknown,
     };
+    int imGuiTouchId = -1;
     bool useRawInput = false;
     InputMode forcedMode = InputMode::Unknown;
     int inputModeSwitchDelay = 100;

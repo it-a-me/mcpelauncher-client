@@ -382,7 +382,7 @@ void ImGuiUIDrawFrame(GameWindow* window) {
     static auto show_demo_window = false;
     static auto show_confirm_popup = false;
     static auto show_about = false;
-    auto wantfocusnextframe = Settings::menubarFocusKey == "alt" && io.KeyAlt;
+    auto wantfocusnextframe = Settings::menubarFocusKey == "alt" && ImGui::IsKeyPressed(ImGuiKey_ModAlt) || Settings::menubarFocusKey == "shift+m+p" && ImGui::IsKeyPressed(ImGuiKey_LeftShift) && ImGui::IsKeyPressed(ImGuiKey_M) && ImGui::IsKeyPressed(ImGuiKey_P);
     if(wantfocusnextframe) {
         ImGui::SetNextFrameWantCaptureKeyboard(true);
     }
