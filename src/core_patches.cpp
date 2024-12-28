@@ -4,9 +4,8 @@
 #include <mcpelauncher/patch_utils.h>
 #include <log.h>
 
-std::shared_ptr<GameWindow> CorePatches::currentGameWindow;
-
-std::shared_ptr<WindowCallbacks> CorePatches::currentGameWindowCallbacks;
+CorePatches::GameWindowHandle CorePatches::currentGameWindowHandle;
+std::vector<std::function<void()>> CorePatches::onWindowCreatedCallbacks;
 
 void CorePatches::install(void* handle) {
     // void* ptr = linker::dlsym(handle, "_ZN3web4http6client7details35verify_cert_chain_platform_specificERN5boost4asio3ssl14verify_contextERKSs");
@@ -24,21 +23,64 @@ void CorePatches::install(void* handle) {
 }
 
 void CorePatches::showMousePointer() {
-    currentGameWindow->setCursorDisabled(false);
+    currentGameWindowHandle.mouseLocked = false;
+    currentGameWindowHandle.callbacks->setCursorLocked(false);
 }
 
 void CorePatches::hideMousePointer() {
-    currentGameWindow->setCursorDisabled(true);
+    currentGameWindowHandle.mouseLocked = true;
+    currentGameWindowHandle.callbacks->setCursorLocked(true);
 }
 
 void CorePatches::setFullscreen(void* t, bool fullscreen) {
-    currentGameWindowCallbacks->setFullscreen(fullscreen);
+    currentGameWindowHandle.callbacks->setFullscreen(fullscreen);
 }
 
 void CorePatches::setGameWindow(std::shared_ptr<GameWindow> gameWindow) {
-    currentGameWindow = gameWindow;
+    currentGameWindowHandle.window = gameWindow;
 }
 
 void CorePatches::setGameWindowCallbacks(std::shared_ptr<WindowCallbacks> gameWindowCallbacks) {
-    currentGameWindowCallbacks = gameWindowCallbacks;
+    currentGameWindowHandle.callbacks = gameWindowCallbacks;
+    for(size_t i = 0; i < onWindowCreatedCallbacks.size(); i++) {
+        onWindowCreatedCallbacks[i]();
+    }
+}
+
+void CorePatches::loadGameWindowLibrary() {
+    std::unordered_map<std::string, void*> syms;
+
+    syms["game_window_get_primary_window"] = (void*)+[]() -> GameWindowHandle* {
+        return &currentGameWindowHandle;
+    };
+
+    syms["game_window_is_mouse_locked"] = (void*)+[](GameWindowHandle* handle) -> bool {
+        return handle->mouseLocked;
+    };
+
+    syms["game_window_get_input_mode"] = (void*)+[](GameWindowHandle* handle) -> int {
+        return (int)handle->callbacks->getInputMode();
+    };
+
+    syms["game_window_add_keyboard_callback"] = (void*)+[](GameWindowHandle* handle, void* user, bool (*callback)(void* user, int keyCode, int action)) {
+        handle->callbacks->addKeyboardCallback(user, callback);
+    };
+
+    syms["game_window_add_mouse_button_callback"] = (void*)+[](GameWindowHandle* handle, void* user, bool (*callback)(void* user, double x, double y, int button, int action)) {
+        handle->callbacks->addMouseButtonCallback(user, callback);
+    };
+
+    syms["game_window_add_mouse_position_callback"] = (void*)+[](GameWindowHandle* handle, void* user, bool (*callback)(void* user, double x, double y, bool relative)) {
+        handle->callbacks->addMousePositionCallback(user, callback);
+    };
+
+    syms["game_window_add_mouse_scroll_callback"] = (void*)+[](GameWindowHandle* handle, void* user, bool (*callback)(void* user, double x, double y, double dx, double dy)) {
+        handle->callbacks->addMouseScrollCallback(user, callback);
+    };
+
+    syms["game_window_add_window_creation_callback"] = (void*)+[](void* user, void (*onCreated)(void* user)) {
+        onWindowCreatedCallbacks.emplace_back(std::bind(onCreated, user));
+    };
+
+    linker::load_library("libmcpelauncher_gamewindow.so", syms);
 }
