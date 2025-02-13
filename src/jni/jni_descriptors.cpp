@@ -14,14 +14,18 @@
 #endif
 #include "java_types.h"
 #include "accounts.h"
+#ifndef NO_OPENSSL
 #include "ecdsa.h"
+#endif
 #include "webview.h"
 #include "jbase64.h"
 #include "arrays.h"
 #include "locale.h"
 #include "signature.h"
 #include "uuid.h"
+#ifndef NO_OPENSSL
 #include "shahasher.h"
+#endif
 #include "securerandom.h"
 
 using namespace FakeJni;
@@ -206,6 +210,7 @@ BEGIN_NATIVE_DESCRIPTOR(NotificationListenerService){FakeJni::Function<&Notifica
     BEGIN_NATIVE_DESCRIPTOR(XboxLocalStorage){Function<&XboxLocalStorage::getPath>{}, "getPath"},
     END_NATIVE_DESCRIPTOR
 
+#ifndef NO_OPENSSL
     BEGIN_NATIVE_DESCRIPTOR(Ecdsa){Constructor<Ecdsa>{}},
     {Function<&Ecdsa::sign>{}, "sign"},
     {Function<&Ecdsa::getPublicKey>{}, "getPublicKey"},
@@ -217,6 +222,7 @@ BEGIN_NATIVE_DESCRIPTOR(NotificationListenerService){FakeJni::Function<&Notifica
     BEGIN_NATIVE_DESCRIPTOR(EcdsaPublicKey){Function<&EcdsaPublicKey::getBase64UrlX>{}, "getBase64UrlX"},
     {Function<&EcdsaPublicKey::getBase64UrlY>{}, "getBase64UrlY"},
     END_NATIVE_DESCRIPTOR
+#endif
 
     BEGIN_NATIVE_DESCRIPTOR(HttpClientRequest){Constructor<HttpClientRequest>{}},
     {Function<&HttpClientRequest::isNetworkAvailable>{}, "isNetworkAvailable"},
@@ -324,10 +330,12 @@ BEGIN_NATIVE_DESCRIPTOR(HTTPResponse){Function<&HTTPResponse::getStatus>{}, "get
     END_NATIVE_DESCRIPTOR
 #endif
 
+#ifndef NO_OPENSSL
     BEGIN_NATIVE_DESCRIPTOR(ShaHasher){Constructor<ShaHasher>{}},
     {Function<&ShaHasher::AddBytes>{}, "AddBytes"},
     {Function<&ShaHasher::SignHash>{}, "SignHash"},
     END_NATIVE_DESCRIPTOR
+#endif
 
     BEGIN_NATIVE_DESCRIPTOR(SecureRandom){Function<&SecureRandom::GenerateRandomBytes>{}, "GenerateRandomBytes"},
     END_NATIVE_DESCRIPTOR

@@ -16,14 +16,18 @@
 #include "sdl3audio.h"
 #endif
 #include "accounts.h"
+#ifndef NO_OPENSSL
 #include "ecdsa.h"
+#endif
 #include "webview.h"
 #include "jbase64.h"
 #include "arrays.h"
 #include "locale.h"
 #include "signature.h"
 #include "uuid.h"
+#ifndef NO_OPENSSL
 #include "shahasher.h"
+#endif
 #include "securerandom.h"
 #include "../settings.h"
 #include "../main.h"
@@ -65,8 +69,10 @@ void JniSupport::registerJniClasses() {
 
     vm.registerClass<XboxInterop>();
     vm.registerClass<XboxLocalStorage>();
+#ifndef NO_OPENSSL
     vm.registerClass<Ecdsa>();
     vm.registerClass<EcdsaPublicKey>();
+#endif
     vm.registerClass<HttpClientRequest>();
     vm.registerClass<HttpClientResponse>();
     vm.registerClass<HttpClientWebSocket>();
@@ -90,7 +96,9 @@ void JniSupport::registerJniClasses() {
     vm.registerClass<HTTPResponse>();
     vm.registerClass<HTTPRequest>();
 
+#ifndef NO_OPENSSL
     vm.registerClass<ShaHasher>();
+#endif
     vm.registerClass<SecureRandom>();
     // Minecraft 1.16.20-210
     vm.registerClass<WebView>();
