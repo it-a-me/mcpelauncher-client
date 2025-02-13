@@ -591,7 +591,8 @@ void ImGuiUIDrawFrame(GameWindow* window) {
 #else
 #define ARCH "Unknown"
 #endif
-            ImGui::Text("OS: %s, Arch: %s\n", TARGET, ARCH);
+            ImGui::Text("OS: %s\n", TARGET);
+            ImGui::Text("Arch: %s\n", ARCH);
 #if defined(__i386__) || defined(__x86_64__)
             CpuId cpuid;
             ImGui::Text("CPU: %s %s\n", cpuid.getManufacturer(), cpuid.getBrandString());

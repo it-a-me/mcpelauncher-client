@@ -169,7 +169,8 @@ int main(int argc, char* argv[]) {
 #else
 #define ARCH "Unknown"
 #endif
-    Log::info("Launcher", "OS: %s, Arch: %s", TARGET, ARCH);
+    Log::info("Launcher", "OS: %s", TARGET);
+    Log::info("Launcher", "Arch: %s", ARCH);
     loadGameOptions();
 #if defined(__i386__) || defined(__x86_64__)
     {
