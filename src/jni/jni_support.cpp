@@ -131,7 +131,7 @@ void JniSupport::registerMinecraftNatives(void *(*symResolver)(const char *)) {
                                                           },
                     symResolver);
     registerNatives(JellyBeanDeviceManager::getDescriptor(), {{"onInputDeviceAddedNative", "(I)V"}, {"onInputDeviceRemovedNative", "(I)V"}}, symResolver);
-    registerNatives(HttpClientRequest::getDescriptor(), {{"OnRequestCompleted", "(JLcom/xbox/httpclient/HttpClientResponse;)V"}, {"OnRequestFailed", "(JLjava/lang/String;)V"}}, symResolver);
+    registerNatives(HttpClientRequest::getDescriptor(), {{"OnRequestCompleted", "(JLcom/xbox/httpclient/HttpClientResponse;)V"}, {"OnRequestFailed", "(JLjava/lang/String;)V"}, {"OnRequestFailed", "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V"}}, symResolver);
     registerNatives(HttpClientWebSocket::getDescriptor(), {{"onMessage", "(Ljava/lang/String;)V"}, {"onBinaryMessage", "(Ljava/nio/ByteBuffer;)V"}, {"onOpen", "()V"}, {"onClose", "(I)V"}, {"onFailure", "()V"}}, symResolver);
     registerNatives(WebView::getDescriptor(), {
                                                   {"urlOperationSucceeded", "(JLjava/lang/String;ZLjava/lang/String;)V"},
@@ -147,6 +147,10 @@ void JniSupport::registerMinecraftNatives(void *(*symResolver)(const char *)) {
                     symResolver);
     registerNatives(NativeOutputStream::getDescriptor(), {
                                                              {"nativeWrite", "(J[BII)V"},
+                                                         },
+                    symResolver);
+    registerNatives(NetworkObserver::getDescriptor(), {
+                                                             {"Log", "(Ljava/lang/String;)V"},
                                                          },
                     symResolver);
     registerNatives(PlayIntegrity::getDescriptor(), {

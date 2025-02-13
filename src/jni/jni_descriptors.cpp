@@ -256,6 +256,8 @@ BEGIN_NATIVE_DESCRIPTOR(NotificationListenerService){FakeJni::Function<&Notifica
 END_NATIVE_DESCRIPTOR
 BEGIN_NATIVE_DESCRIPTOR(NativeInputStream)
 END_NATIVE_DESCRIPTOR
+BEGIN_NATIVE_DESCRIPTOR(NetworkObserver)
+END_NATIVE_DESCRIPTOR
 
 BEGIN_NATIVE_DESCRIPTOR(XboxLoginCallback){Function<&XboxLoginCallback::onLogin>{}, "onLogin"},
     {Function<&XboxLoginCallback::onSuccess>{}, "onSuccess"},

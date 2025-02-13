@@ -94,3 +94,9 @@ public:
     NativeOutputStream(FakeJni::JLong call_handle);
     void WriteAll(std::shared_ptr<FakeJni::JByteArray> data);
 };
+
+class NetworkObserver : public FakeJni::JObject {
+
+public:
+    DEFINE_CLASS_NAME("com/xbox/httpclient/NetworkObserver")
+};
