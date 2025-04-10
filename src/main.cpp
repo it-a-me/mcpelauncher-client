@@ -410,7 +410,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
             modLoader.loadModsFromDirectory(PathHelper::getPrimaryDataDirectory() + "mods/", true);
         }
         // Try load the game again
-        handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen));
+        handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen), reinterpret_cast<void*>(&FakeLooper::onGameActivityClose));
     }
     if(!handle && !disableFmod) {
         // 1.21.30.22 technically require newer fmod
@@ -419,7 +419,7 @@ Hardware	: Qualcomm Technologies, Inc MSM8998
         linker::unload_library(libfmod);
 
         // Try load the game again
-        handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen));
+        handle = MinecraftUtils::loadMinecraftLib(reinterpret_cast<void*>(&CorePatches::showMousePointer), reinterpret_cast<void*>(&CorePatches::hideMousePointer), reinterpret_cast<void*>(&CorePatches::setFullscreen), reinterpret_cast<void*>(&FakeLooper::onGameActivityClose));
     }
     if(!handle) {
         Log::error("Launcher", "Failed to load Minecraft library, please reinstall or wait for an update to support the new release");
